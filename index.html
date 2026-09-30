@@ -1148,16 +1148,15 @@ AFRAME.registerComponent('open-day', {
     const grass = noiseTex('#6a8a3c', v => [95 + v * 60, 125 + v * 45, 45 + v * 30], 256, true, 60, 60);
     const ground = mesh(new THREE.PlaneGeometry(400, 400), std('#ffffff', { map: grass, roughness: 1 }), false, true); ground.rotation.x = -Math.PI / 2; sc.add(ground);
     const lawnTex = noiseTex('#6f9a42', v => [90 + v * 60, 138 + v * 45, 52 + v * 30], 256, true, 18, 12);
-    for (let i = -8; i < 8; i++) {   // mown stripes, as on the real lawn
-      const stripe = mesh(new THREE.PlaneGeometry(4, 26), std(i % 2 ? '#f4ffe8' : '#d5e3c6', { map: lawnTex, roughness: 1 }), false, true);
-      stripe.rotation.x = -Math.PI / 2; stripe.position.set(i * 4 + 2, 0.004, 6.6); sc.add(stripe);
+    // half-circle lawn in front of the drive, mown in concentric rings
+    this.lawnR = 15;
+    for (let r = 0, k = 0; r < this.lawnR; r += 1.4, k++) {
+      const ring = mesh(new THREE.RingGeometry(Math.max(0.001, r), Math.min(this.lawnR, r + 1.4), 96, 1, Math.PI, Math.PI), std(k % 2 ? '#f4ffe8' : '#d3e2c3', { map: lawnTex, roughness: 1 }), false, true);
+      ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.004, -6.3); sc.add(ring);
     }
-    const gravelTex = noiseTex('#c4b598', v => [150 + v * 80, 135 + v * 70, 105 + v * 60], 256, false, 2, 12);
-    const path = mesh(new THREE.PlaneGeometry(3, 26), std('#ffffff', { map: gravelTex, roughness: 1 }), false, true); path.rotation.x = -Math.PI / 2; path.position.set(0, 0.012, 6.6); sc.add(path);
     const tarTex = noiseTex('#55575a', v => [70 + v * 50, 72 + v * 50, 76 + v * 50], 256, false, 30, 2);
     const drive = mesh(new THREE.PlaneGeometry(60, 3.9), std('#ffffff', { map: tarTex, roughness: 0.95 }), false, true); drive.rotation.x = -Math.PI / 2; drive.position.set(0, 0.013, -8.25); sc.add(drive);
     const kerb = std('#9a958c');
-    for (const sx of [-1.52, 1.52]) { const e = mesh(new THREE.BoxGeometry(0.08, 0.06, 26), kerb, false, true); e.position.set(sx, 0.03, 6.6); sc.add(e); }
     const k2 = mesh(new THREE.BoxGeometry(60, 0.08, 0.12), kerb, false, true); k2.position.set(0, 0.04, -6.3); sc.add(k2);
 
     this.buildSchool(sc);
@@ -1184,7 +1183,6 @@ AFRAME.registerComponent('open-day', {
 
   redrawAll() {
     drawBanner(this.bannerCanvas); this.bannerTex.needsUpdate = true;
-    drawSign(this.signCanvas); this.signTex.needsUpdate = true;
     drawFlag(this.flagCanvas); this.flagTex.needsUpdate = true;
     this.drawClock();
   },
@@ -1202,7 +1200,7 @@ AFRAME.registerComponent('open-day', {
     const block = mesh(new THREE.BoxGeometry(W, H, D), [side, side, brickMat, brickMat, front, brickMat]);
     block.position.set(0, H / 2, zF - D / 2); g.add(block);
     // hipped slate roof
-    const roofH = 5.5, o = 0.45, x0 = -W / 2 - o, x1 = W / 2 + o, z0 = -D / 2 - o, z1 = D / 2 + o, rx = (W - D) / 2;
+    const RW = W + 2.8, roofH = 5.5, o = 0.45, x0 = -RW / 2 - o, x1 = RW / 2 + o, z0 = -D / 2 - o, z1 = D / 2 + o, rx = (RW - D) / 2;
     const P = [], UV = [];
     const tri = (a, b, c, uvs) => { P.push(...a, ...b, ...c); UV.push(...uvs); };
     const sl = Math.hypot(roofH, z1) / 2.2;
@@ -1357,14 +1355,6 @@ AFRAME.registerComponent('open-day', {
     this.flagGeo = new THREE.PlaneGeometry(1, 1, 14, 18); this.flagBase = this.flagGeo.attributes.position.array.slice();
     const flag = new THREE.Mesh(this.flagGeo, new THREE.MeshBasicMaterial({ map: this.flagTex, side: THREE.DoubleSide, toneMapped: false })); flag.frustumCulled = false; sc.add(flag);
     for (const k of [0.1, 0.9]) { const tie = mesh(new THREE.TorusGeometry(0.06, 0.012, 4, 10), std('#f2f2f2')); tie.position.copy(fTop).addScaledVector(fDir, -0.25 - k * 1.75); tie.quaternion.copy(pole.quaternion); tie.rotateX(Math.PI / 2); sc.add(tie); }
-    // the school sign
-    this.signCanvas = mkCanvas(768, 600); this.signTex = canvasTex(this.signCanvas); this.signTex.wrapS = this.signTex.wrapT = THREE.ClampToEdgeWrapping; drawSign(this.signCanvas);
-    const sg = new THREE.Group(); sg.position.set(5.6, 0, -3.4); sg.rotation.y = -0.55; sc.add(sg);
-    const navy = std('#2f4a94', { roughness: 0.5, metalness: 0.2 });
-    for (const sx of [-1.18, 1.18]) { const p = mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.0, 10), navy); p.position.set(sx, 1.5, 0); sg.add(p); const cap = mesh(new THREE.SphereGeometry(0.08, 10, 8), gold); cap.position.set(sx, 3.04, 0); sg.add(cap); }
-    const board = mesh(new THREE.PlaneGeometry(2.2, 1.72), new THREE.MeshBasicMaterial({ map: this.signTex, alphaTest: 0.5, toneMapped: false })); board.position.set(0, 1.95, 0.05); sg.add(board);
-    const bs = new THREE.Shape(); bs.moveTo(-1.1, -0.86); bs.lineTo(1.1, -0.86); bs.lineTo(1.1, 0.602); bs.quadraticCurveTo(0, 1.015, -1.1, 0.602); bs.lineTo(-1.1, -0.86);
-    const back = mesh(new THREE.ShapeGeometry(bs, 12), std(BLUE, { roughness: 0.6 })); back.rotation.y = Math.PI; back.position.set(0, 1.95, 0.03); sg.add(back);
   },
 
   drawClock() {
@@ -1383,11 +1373,15 @@ AFRAME.registerComponent('open-day', {
   buildGarden(sc) {
     const soil = std('#4a3322', { roughness: 1, map: noiseTex('#4a3322', v => [60 + v * 40, 42 + v * 25, 28 + v * 15], 128, false, 4, 4) });
     const beds = [
-      { x0: 1.9, x1: 3.5, z0: -6.0, z1: 3.2, dens: 70 }, { x0: -3.5, x1: -1.9, z0: -6.0, z1: 3.2, dens: 70 },
       { x0: 4.9, x1: 14.8, z0: -11.95, z1: -10.95, dens: 45 }, { x0: -14.8, x1: -4.9, z0: -11.95, z1: -10.95, dens: 45 },
-      { x0: 4.4, x1: 12.5, z0: -6.1, z1: -5.1, dens: 55 }, { x0: -12.5, x1: -4.4, z0: -6.1, z1: -5.1, dens: 55 }
+      { x0: -14.9, x1: 14.9, z0: -6.15, z1: -5.35, dens: 26 }
     ];
     this.beds = beds;
+    // curved border round the half-circle lawn
+    const R0 = this.lawnR + 0.12, R1 = this.lawnR + 1.7, cz = -6.3;
+    const arcSoil = mesh(new THREE.RingGeometry(R0, R1, 96, 1, Math.PI, Math.PI), soil, false, true); arcSoil.rotation.x = -Math.PI / 2; arcSoil.position.set(0, 0.03, cz); sc.add(arcSoil);
+    const edging = mesh(new THREE.RingGeometry(this.lawnR, R0, 96, 1, Math.PI, Math.PI), std('#9a958c'), false, true); edging.rotation.x = -Math.PI / 2; edging.position.set(0, 0.035, cz); sc.add(edging);
+    const arcPt = () => { const a = rr(0.02, Math.PI - 0.02), r = rr(R0 + 0.08, R1 - 0.08); return [Math.cos(a) * r, cz + Math.sin(a) * r]; };
     for (const b of beds) { const bed = mesh(new THREE.BoxGeometry(b.x1 - b.x0, 0.1, b.z1 - b.z0), soil, false, true); bed.position.set((b.x0 + b.x1) / 2, 0.05, (b.z0 + b.z1) / 2); sc.add(bed); }
     // cornflowers (instanced, swaying in the wind)
     const parts = [];
@@ -1411,25 +1405,42 @@ AFRAME.registerComponent('open-day', {
         transformed.z += cos(uTime * 1.2 + ip.z * 1.3) * 0.035 * hh;`);
     };
     const list = [];
-    for (const b of beds) { const n = Math.round((b.x1 - b.x0) * (b.z1 - b.z0) * b.dens); for (let i = 0; i < n; i++) list.push([rr(b.x0 + 0.06, b.x1 - 0.06), rr(b.z0 + 0.06, b.z1 - 0.06)]); }
+    for (const b of beds) { const n = Math.round((b.x1 - b.x0) * (b.z1 - b.z0) * b.dens); for (let i = 0; i < n; i++) list.push([rr(b.x0 + 0.06, b.x1 - 0.06), rr(b.z0 + 0.06, b.z1 - 0.06), 0.09]); }
+    for (let i = 0; i < 1100; i++) { const [x, z] = arcPt(); list.push([x, z, 0.03]); }
     const fl = new THREE.InstancedMesh(mergeColoured(parts), fmat, list.length); fl.receiveShadow = true;
     const dm = new THREE.Object3D(), col = new THREE.Color();
-    list.forEach(([x, z], i) => {
-      const s = rr(0.75, 1.25); dm.position.set(x, 0.09, z); dm.rotation.set(rr(-0.12, 0.12), rr(0, 6.28), rr(-0.12, 0.12)); dm.scale.set(s, s * rr(0.8, 1.25), s); dm.updateMatrix(); fl.setMatrixAt(i, dm.matrix);
+    list.forEach(([x, z, y], i) => {
+      const s = rr(0.75, 1.25); dm.position.set(x, y, z); dm.rotation.set(rr(-0.12, 0.12), rr(0, 6.28), rr(-0.12, 0.12)); dm.scale.set(s, s * rr(0.8, 1.25), s); dm.updateMatrix(); fl.setMatrixAt(i, dm.matrix);
       const v = rr(0.82, 1.12); col.setRGB(v * rr(0.92, 1.05), v, v * rr(0.98, 1.08)); fl.setColorAt(i, col);
     });
     sc.add(fl);
     const clumpGeo = new THREE.IcosahedronGeometry(0.12, 0); clumpGeo.scale(1, 0.55, 1);
     const clumpsList = []; for (const b of beds) { const n = Math.round((b.x1 - b.x0) * (b.z1 - b.z0) * 7); for (let i = 0; i < n; i++) clumpsList.push([rr(b.x0 + 0.1, b.x1 - 0.1), rr(b.z0 + 0.1, b.z1 - 0.1)]); }
+    for (let i = 0; i < 220; i++) clumpsList.push(arcPt());
     const clumps = new THREE.InstancedMesh(clumpGeo, std('#46682c', { flatShading: true, roughness: 1 }), clumpsList.length); clumps.receiveShadow = true;
     clumpsList.forEach(([x, z], i) => { const s = rr(0.7, 1.5); dm.position.set(x, 0.12, z); dm.rotation.set(0, rr(0, 6), 0); dm.scale.set(s, s, s); dm.updateMatrix(); clumps.setMatrixAt(i, dm.matrix); col.setRGB(rr(0.8, 1.15), rr(0.8, 1.05), rr(0.7, 1)); clumps.setColorAt(i, col); });
     sc.add(clumps);
-    // box hedges along the path beds
-    const hedgeMat = std('#ffffff', { map: noiseTex('#3a5a25', v => [55 + v * 50, 85 + v * 45, 30 + v * 30], 128, false, 3, 1), roughness: 1 });
-    for (const sx of [-1, 1]) {
-      const h = mesh(new THREE.BoxGeometry(0.45, 0.55, 9.6), hedgeMat); h.position.set(sx * 3.78, 0.275, -1.4); sc.add(h);
-      for (const hz of [-6.25, 3.45]) { const ball = mesh(new THREE.SphereGeometry(0.45, 14, 10), hedgeMat); ball.position.set(sx * 3.78, 0.5, hz); sc.add(ball); }
-    }
+    // roses — bushes round the half circle and along the drive, each with its own colour of bloom
+    const roseSpots = [];
+    for (let a = 0.04; a < Math.PI - 0.02; a += 1.05 / ((R0 + R1) / 2)) roseSpots.push([Math.cos(a) * (R0 + R1) / 2 + rr(-0.15, 0.15), cz + Math.sin(a) * (R0 + R1) / 2 + rr(-0.15, 0.15), 0.03]);
+    for (let x = -14.4; x <= 14.4; x += 1.25) roseSpots.push([x + rr(-0.1, 0.1), -5.75, 0.09]);
+    const bushG = new THREE.IcosahedronGeometry(0.36, 1); bushG.scale(1, 0.85, 1);
+    const bushes = new THREE.InstancedMesh(bushG, std('#34532a', { flatShading: true, roughness: 1 }), roseSpots.length); bushes.castShadow = true; bushes.receiveShadow = true;
+    const PER = 14, bloomG = new THREE.SphereGeometry(0.058, 8, 6); bloomG.scale(1, 0.75, 1);
+    const blooms = new THREE.InstancedMesh(bloomG, std('#ffffff', { roughness: 0.55 }), roseSpots.length * PER); blooms.castShadow = true;
+    const ROSE = ['#b3122e', '#d8304e', '#e46a8a', '#f3b3c3', '#f7efe4', '#f2a65a', '#f0cf4a', '#c21d3c'];
+    roseSpots.forEach(([x, z, y], i) => {
+      const s2 = rr(0.85, 1.2); dm.position.set(x, y + 0.34 * s2, z); dm.rotation.set(0, rr(0, 6), 0); dm.scale.set(s2, s2, s2); dm.updateMatrix(); bushes.setMatrixAt(i, dm.matrix);
+      col.setRGB(rr(0.85, 1.1), rr(0.9, 1.1), rr(0.85, 1.05)); bushes.setColorAt(i, col);
+      const rc = ROSE[i % ROSE.length];
+      for (let k = 0; k < PER; k++) {
+        const th = rr(0, 6.28), ph = rr(0.1, 1.2), r = 0.37 * s2;
+        dm.position.set(x + Math.cos(th) * Math.sin(ph) * r, y + 0.34 * s2 + Math.cos(ph) * r * 0.85, z + Math.sin(th) * Math.sin(ph) * r);
+        dm.rotation.set(rr(-0.4, 0.4), rr(0, 6), rr(-0.4, 0.4)); const bs = rr(0.8, 1.25); dm.scale.set(bs, bs, bs); dm.updateMatrix(); blooms.setMatrixAt(i * PER + k, dm.matrix);
+        col.set(rc).multiplyScalar(rr(0.85, 1.05)); blooms.setColorAt(i * PER + k, col);
+      }
+    });
+    sc.add(bushes); sc.add(blooms);
     // autumn trees
     const PAL = { maple: ['#d2541f', '#e0782a', '#c23b1c', '#e89a2c'], oak: ['#c7892f', '#a8742c', '#d9a441', '#8f7a2e'], beech: ['#5c2426', '#6e2e2a', '#4e2224'], birch: ['#e6b534', '#f0c94a', '#d9a02a'], green: ['#6f7f2f', '#8a8a32', '#b0862e'] };
     this.trees = [];
@@ -1484,8 +1495,7 @@ AFRAME.registerComponent('open-day', {
       [[-2.6, 3.85, -1.25], [-2.6, 3.25, 3.3]], [[2.6, 3.85, -1.25], [2.6, 3.25, 3.3]],
       [[-2.6, 3.25, 3.3], [-2.6, 3.25, 7.5]], [[2.6, 3.25, 3.3], [2.6, 3.25, 7.5]],
       [[-2.6, 3.25, 3.3], [2.6, 3.25, 3.3]], [[-2.6, 3.25, 7.5], [2.6, 3.25, 7.5]],
-      [[-2.6, 3.9, -1.25], [-2.45, 4.1, -10.05]], [[2.6, 3.9, -1.25], [2.45, 4.1, -10.05]],
-      [[5.6, 3.0, -3.4], [2.6, 3.95, -1.25]]
+      [[-2.6, 3.9, -1.25], [-2.45, 4.1, -10.05]], [[2.6, 3.9, -1.25], [2.45, 4.1, -10.05]]
     ];
     this.strings = []; let total = 0;
     for (const [a, b] of lines) {
