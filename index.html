@@ -101,7 +101,7 @@
 <div id="hud">
   <div id="caption" style="opacity:0"></div>
 </div>
-<div id="micWrap">
+<div id="micWrap" class="hide">
   <div id="micBtn" title="Hold to speak">
     <div id="micRing"></div>
     <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
@@ -790,6 +790,22 @@ const BOOK = [
   [/hat|ruff|clothes|dress|gown|fur/i, ["This ruff took my laundress a full morning with her poking-sticks! And the fur is fox, to keep out the Dulwich wind."]]
 ];
 const DEFAULT = ["Marry, a question to puzzle a philosopher! Ask it within, of the masters and scholars — they are wiser than an old player.", "Forsooth, thou hast me there. Yet I say: go in, look about thee, and let this fair school answer thee itself.", "Methinks that is a matter for wiser heads. But welcome, welcome all the same!"];
+const WELCOMES = () => [
+  `Good morrow, gentles! Welcome, thrice welcome, to ${schoolName()}!`,
+  "I am Edward Alleyn, player of the Rose and the Fortune — and founder of this school in the year sixteen hundred and nineteen.",
+  "Come in, come in! The doors stand open, and every corner within is ready to greet thee.",
+  "Four hundred years and more have passed since I founded my college of God's Gift. How proud I am of what hath grown!",
+  "Mark the cornflowers, good friends — as blue as the colours of this very school.",
+  "The leaves turn gold upon the trees, yet learning here doth bloom all the year round.",
+  "Pray, speak with the masters, mistresses and scholars within. They shall answer thee better than an old player can!",
+  "I once played Doctor Faustus and mighty Tamburlaine. Today my finest part is to bid thee welcome!",
+  "All the world's a stage, as my good rival Master Shakespeare said — and this school hath a splendid one.",
+  "Wander where thou wilt: see the arts, the sciences, the music and the sport. There is wonder in every room.",
+  "Young scholars, be not shy! Every great player was once a nervous beginner.",
+  "God give you good day, and may your visit be merry and full of discovery!",
+  "Welcome, welcome all, to our Open Day! Enter, and be most heartily received."
+];
+let welcomeIdx = 0, welcomeCount = 0;
 const GREETINGS = () => [
   `Good morrow, gentles! Welcome, thrice welcome, to ${schoolName()}! Come hither and speak with old Ned Alleyn.`,
   "Hark, good people! The leaves turn gold, yet learning here doth bloom as blue as these cornflowers. Enter, enter!",
@@ -858,8 +874,8 @@ function speak(text) {
   S.sentenceMood = /!/.test(text) ? 1 : /\?/.test(text) ? 2 : 0;
   caption(null, text);
   S.speaking = true; S.thinking = false;
-  const dur = Math.max(2500, text.split(/\s+/).length * 330);   // mouth moves for as long as it takes to read
-  setTimeout(() => { if (token !== speakToken) return; S.speaking = false; afterSpeak(); }, dur);
+  const dur = Math.max(4200, 1800 + text.split(/\s+/).length * 360);   // mouth moves for as long as it takes to read
+  setTimeout(() => { if (token !== speakToken) return; S.speaking = false; $('caption').style.opacity = 0; afterSpeak(); }, dur);
 }
 function browserSpeak(text, token) {
   caption(null, text);
@@ -976,7 +992,7 @@ function setMic(state) {
 function interrupt() { speakToken++; if (window.speechSynthesis) speechSynthesis.cancel(); if (ttsSrc) { try { ttsSrc.stop(); } catch (e) {} ttsSrc = null; } S.speaking = false; }
 
 function pttDown() {
-  ensureEntered(false);
+  ensureEntered(false); return;   // visual-only mode: no listening
   if (pttHeld || busy) return; pttHeld = true; interrupt(); audio();
   S.lastInteraction = performance.now();
   if (SR) {
@@ -1096,7 +1112,7 @@ function unlockAudio() {
 function ensureEntered(withWelcome = true) {
   if (entered) return;
   entered = true; unlockAudio(); setMic('idle');
-  if (withWelcome) { fanfare(); setTimeout(() => greet(true), 2200); }
+  if (withWelcome) fanfare();
   if (settings.hands) startHandsFree();
 }
 const firstTouch = e => {
@@ -1287,9 +1303,9 @@ AFRAME.registerComponent('open-day', {
     const hood = mesh(new THREE.BoxGeometry(4.9, 0.38, 1.05), sand); hood.position.set(0, 4.3, bayZF + 0.52); g.add(hood);
     const hood2 = mesh(new THREE.BoxGeometry(5.1, 0.14, 1.15), sand); hood2.position.set(0, 4.54, bayZF + 0.55); g.add(hood2);
     // hanging lantern
-    const chain = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.55, 4), dark); chain.position.set(0.95, 3.85, bayZF + 0.75); g.add(chain);
-    const lglass = mesh(new THREE.SphereGeometry(0.2, 14, 10), new THREE.MeshStandardMaterial({ color: '#fff0c8', emissive: '#ffb657', emissiveIntensity: 0.9, transparent: true, opacity: 0.85 }), false); lglass.position.set(0.95, 3.4, bayZF + 0.75); g.add(lglass);
-    const lcap = mesh(new THREE.ConeGeometry(0.16, 0.18, 8), dark); lcap.position.set(0.95, 3.65, bayZF + 0.75); g.add(lcap);
+    const chain = mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.55, 4), dark); chain.position.set(0, 3.85, bayZF + 0.75); g.add(chain);
+    const lglass = mesh(new THREE.SphereGeometry(0.2, 14, 10), new THREE.MeshStandardMaterial({ color: '#fff0c8', emissive: '#ffb657', emissiveIntensity: 0.9, transparent: true, opacity: 0.85 }), false); lglass.position.set(0, 3.4, bayZF + 0.75); g.add(lglass);
+    const lcap = mesh(new THREE.ConeGeometry(0.16, 0.18, 8), dark); lcap.position.set(0, 3.65, bayZF + 0.75); g.add(lcap);
     const lring = mesh(new THREE.TorusGeometry(0.2, 0.012, 4, 16), dark); lring.rotation.x = Math.PI / 2; lring.position.copy(lglass.position); g.add(lring);
     // steps
     for (let k = 0; k < 3; k++) {
@@ -1595,11 +1611,15 @@ AFRAME.registerComponent('open-day', {
     if (actx) { this.birdT -= dt; if (this.birdT < 0) { this.birdT = rr(1.5, 6); chirp(); } }
     S.level = micLevel(); vadTick(dt);
     const cam = this.el.camera, camPos = new THREE.Vector3(); cam.getWorldPosition(camPos);
-    if (entered && settings.greet && !busy && !S.speaking && !S.listening) {
-      const dist = Math.hypot(camPos.x, camPos.z);
-      if (this.anim.lastDist > 3.6 && dist < 2.8) greet(false);
-      this.anim.lastDist = dist;
-      if (performance.now() - Math.max(S.lastInteraction, lastGreet) > 45000) greet(false);
+    // cycle through welcoming messages, bowing every few lines
+    if (S.speaking) this.nextMsg = null;
+    else {
+      if (this.nextMsg == null) this.nextMsg = time + 2.4;
+      if (time >= this.nextMsg) {
+        const list = WELCOMES(), line = list[welcomeIdx++ % list.length];
+        if (welcomeCount++ % 3 === 0) { S.bowT = 0; setTimeout(() => speak(line), 600); } else speak(line);
+        this.nextMsg = time + 1e9;
+      }
     }
     this.animateAlleyn(time, dt, camPos);
   },
